@@ -3,79 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WRC Style P2P Live</title>
+    <title>WRC Style Orange & Navy</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Oswald:wght@500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --wrc-yellow: #fff200;
-            --wrc-black: rgba(0, 0, 0, 0.8);
+        /* フォント設定：フォントファイルを同じフォルダに置いてください */
+        @font-face {
+            font-family: 'WRCCleanBold';
+            src: url('WRCCleanBold.woff2') format('woff2'),
+                 url('WRCCleanBold.ttf') format('truetype');
+            font-weight: bold;
         }
-        body { margin: 0; background: #111; font-family: 'Oswald', sans-serif; color: white; overflow: hidden; }
 
-        /* レイアウト */
-        #setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        #live-ui { display: none; position: relative; width: 100vw; height: 100vh; }
+        :root {
+            --wrc-orange: #ff6600; /* オレンジ */
+            --wrc-navy: #001a33;   /* 紺色 */
+            --wrc-text: #ffffff;
+        }
+
+        body { 
+            margin: 0; 
+            background: var(--wrc-navy); 
+            font-family: 'WRCCleanBold', sans-serif; 
+            color: var(--wrc-text); 
+            overflow: hidden; 
+        }
+
+        /* セットアップ画面 */
+        #setup-screen { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
+            background: radial-gradient(circle, var(--wrc-navy) 0%, #000 100%);
+        }
+
+        #live-ui { display: none; position: relative; width: 100vw; height: 100vh; background: #000; }
 
         /* ビデオ */
-        video { width: 100%; height: 100%; object-fit: cover; }
+        video { width: 100%; height: 100%; object-fit: contain; }
 
-        /* WRC風オーバーレイ */
+        /* WRC演出：オーバーレイ */
         .overlay { position: absolute; pointer-events: none; }
         
-        /* タイムバー（上部） */
-        .timer-bar { top: 20px; left: 50%; transform: translateX(-50%); background: var(--wrc-black); 
-                     padding: 5px 20px; border-left: 5px solid var(--wrc-yellow); font-family: 'Orbitron'; font-size: 2rem; }
+        .timer-bar { 
+            top: 30px; left: 40px; 
+            background: var(--wrc-navy); 
+            padding: 10px 25px; 
+            border-left: 8px solid var(--wrc-orange); 
+            font-size: 2.5rem;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        }
 
-        /* ドライバー情報（右下） */
-        .driver-info { bottom: 40px; right: 40px; background: var(--wrc-black); padding: 10px 30px; 
-                       border-right: 10px solid var(--wrc-yellow); text-align: right; }
-        .driver-name { font-size: 1.5rem; text-transform: uppercase; }
-        .speed { color: var(--wrc-yellow); font-size: 3rem; font-family: 'Orbitron'; }
+        .driver-info { 
+            bottom: 50px; right: 0; 
+            background: var(--wrc-orange); 
+            color: var(--wrc-navy);
+            padding: 15px 40px; 
+            clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%);
+            text-align: right; 
+        }
+        .driver-name { font-size: 1.8rem; font-weight: 900; }
 
-        /* アニメーション演出 */
-        .wrc-anim { position: absolute; width: 100%; height: 100%; top: 0; left: 0;
-                    background: linear-gradient(90deg, transparent 0%, rgba(255,242,0,0.1) 50%, transparent 100%);
-                    animation: sweep 2s infinite linear; display: none; }
-        @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+        /* WRC風アニメーション：オレンジの走査線 */
+        .wrc-anim { 
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            background: linear-gradient(rgba(255,102,0,0.05) 50%, transparent 50%);
+            background-size: 100% 4px;
+            animation: scan 4s infinite linear;
+            z-index: 10;
+        }
+        @keyframes scan { from { background-position: 0 0; } to { background-position: 0 100%; } }
 
-        button { padding: 10px 20px; font-size: 1.2rem; cursor: pointer; background: var(--wrc-yellow); border: none; font-weight: bold; }
-        input { padding: 10px; font-size: 1.2rem; margin: 10px; text-align: center; width: 100px; }
+        /* UIパーツ */
+        .btn { 
+            padding: 15px 30px; font-size: 1.2rem; cursor: pointer; 
+            background: var(--wrc-orange); border: none; font-family: 'WRCCleanBold';
+            color: var(--wrc-navy); transition: 0.3s;
+        }
+        .btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+        input { 
+            padding: 15px; font-size: 1.5rem; margin: 10px; text-align: center; 
+            width: 150px; background: rgba(255,255,255,0.1); border: 2px solid var(--wrc-orange); color: white;
+        }
+        
+        #file-input { display: none; }
     </style>
 </head>
 <body>
 
 <div id="setup-screen">
-    <h1>WRC P2P LIVE</h1>
-    <button onclick="startMode('host')">配信モード（コード発行）</button>
-    <div style="margin-top: 20px;">
-        <input type="text" id="join-code" placeholder="4桁コード">
-        <button onclick="startMode('guest')">視聴モード（接続）</button>
+    <h1 style="color: var(--wrc-orange); font-size: 4rem; margin-bottom: 0;">WRC LIVE</h1>
+    <p style="margin-bottom: 40px; letter-spacing: 2px;">P2P BROADCAST SYSTEM</p>
+    
+    <div style="background: rgba(255,255,255,0.05); padding: 40px; border-radius: 10px; text-align: center;">
+        <input type="file" id="file-input" accept="video/*">
+        <button class="btn" onclick="document.getElementById('file-input').click()">動画を選択</button>
+        <p id="file-name" style="font-size: 0.8rem; margin: 10px 0; color: var(--wrc-orange);"></p>
+        <button class="btn" id="host-btn" onclick="startMode('host')" disabled>配信モード開始</button>
+    </div>
+
+    <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 40px;">
+        <input type="text" id="join-code" maxlength="4" placeholder="CODE">
+        <button class="btn" style="background: #ccc;" onclick="startMode('guest')">視聴モードで接続</button>
     </div>
 </div>
 
 <div id="live-ui">
-    <div class="wrc-anim" id="anim-layer"></div>
-    <video id="remote-video" autoplay playsinline></video>
+    <div class="wrc-anim"></div>
+    <video id="main-video" autoplay playsinline loop muted></video>
     <div class="overlay timer-bar" id="timer">00:00.000</div>
     <div class="overlay driver-info">
-        <div class="driver-name" id="status-text">WAITING...</div>
-        <div class="speed">184 <span style="font-size: 1rem;">KM/H</span></div>
+        <div class="driver-name" id="status-text">SIGNAL SEARCHING...</div>
+        <div id="code-display" style="font-size: 0.9rem; font-weight: bold;"></div>
     </div>
 </div>
 
 <script>
     let peer;
-    const timerElement = document.getElementById('timer');
-    
-    // WRC風タイマー
+    let localStream;
+    const fileInput = document.getElementById('file-input');
+    const videoElement = document.getElementById('main-video');
+
+    // ファイルが選択されたら配信ボタンを有効化
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('file-name').innerText = `Selected: ${file.name}`;
+            document.getElementById('host-btn').disabled = false;
+            // ローカルプレビュー用URL
+            const url = URL.createObjectURL(file);
+            videoElement.src = url;
+        }
+    });
+
+    // WRCタイマー
     setInterval(() => {
         const now = new Date();
-        timerElement.innerText = `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
+        document.getElementById('timer').innerText = 
+            `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
     }, 45);
 
     function startMode(mode) {
-        // IDを4桁の数字に限定（簡易化のため）
         const peerId = mode === 'host' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
         peer = new Peer(peerId);
 
@@ -84,8 +149,17 @@
             document.getElementById('live-ui').style.display = 'block';
             
             if (mode === 'host') {
-                document.getElementById('status-text').innerText = `LIVE CODE: ${id}`;
-                startStreaming();
+                document.getElementById('status-text').innerText = "LIVE BROADCAST";
+                document.getElementById('code-display').innerText = `JOIN CODE: ${id}`;
+                
+                // ビデオのストリームを取得してキャプチャ
+                const stream = videoElement.captureStream ? videoElement.captureStream() : videoElement.mozCaptureStream();
+                videoElement.play();
+                videoElement.muted = false; // 配信時は音を出す
+
+                peer.on('call', (call) => {
+                    call.answer(stream);
+                });
             } else {
                 const connCode = document.getElementById('join-code').value;
                 connectToHost(connCode);
@@ -93,23 +167,13 @@
         });
     }
 
-    async function startStreaming() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById('remote-video').srcObject = stream;
-        document.getElementById('anim-layer').style.display = 'block';
-
-        peer.on('call', (call) => {
-            call.answer(stream); // 視聴者に映像を送信
-        });
-    }
-
     function connectToHost(hostId) {
         document.getElementById('status-text').innerText = "CONNECTING...";
-        const call = peer.call(hostId, new MediaStream()); // 空のストリームを送りつつ接続
+        const call = peer.call(hostId, new MediaStream()); 
         call.on('stream', (remoteStream) => {
-            document.getElementById('remote-video').srcObject = remoteStream;
+            videoElement.srcObject = remoteStream;
+            videoElement.play();
             document.getElementById('status-text').innerText = "LIVE STREAMING";
-            document.getElementById('anim-layer').style.display = 'block';
         });
     }
 </script>
